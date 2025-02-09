@@ -8,4 +8,6 @@ import com.marpaz.backend.model.ShoppingList;
 
 public interface ShoppingListRepository extends JpaRepository<ShoppingList, Long> {
     Page<ShoppingList> findByEnabledTrue(Pageable pageable);
+
+    Page<ShoppingList> findByEnabledFalse(Pageable pageable);
 }

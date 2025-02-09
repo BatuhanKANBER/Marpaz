@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,15 +43,14 @@ public class ShoppingListController {
         return shoppingListService.getAllActiveList(page).map(ShoppingListDTO::new);
     }
 
+    @GetMapping("/history-list")
+    Page<ShoppingListDTO> getAllHistoryList(@PageableDefault(sort = "id", direction = Direction.DESC) Pageable page) {
+        return shoppingListService.getAllHistoryList(page).map(ShoppingListDTO::new);
+    }
+
     @PutMapping("/{id}/update")
     GenericMessage update(@PathVariable Long id, @Valid @RequestBody ShoppingListUpdateDTO shoppingListUpdateDTO) {
         shoppingListService.update(id, shoppingListUpdateDTO);
         return new GenericMessage("List is updated.");
-    }
-
-    @DeleteMapping("/{id}/remove")
-    GenericMessage remove(@PathVariable Long id){
-        shoppingListService.remove(id);
-        return new GenericMessage("List is removed.");
     }
 }

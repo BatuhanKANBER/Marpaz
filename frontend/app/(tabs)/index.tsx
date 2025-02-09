@@ -1,31 +1,76 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { useList } from '../context/ListContext';
+import { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { create, getActiveLists, listCompleted } from '../api/api';
+import { useList } from '../context/ListContext';
 
 interface ListItem {
-  id: string;
+  id: number;
   name: string;
-  items: string[];
-  isExpanded?: boolean;
-  createdAt: Date;
-  completedAt?: Date;
+  items: {
+    id: number;
+    name: string;
+  }[];
+  createdDate: string;
+  enabled: boolean;
+}
+
+interface PageResponse {
+  content: ListItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
 }
 
 export default function HomeScreen() {
-  const { activeLists, setActiveLists, completeList } = useList();
   const [isModalVisible, setModalVisible] = useState(false);
   const [newItem, setNewItem] = useState('');
   const [listName, setListName] = useState('');
   const [currentItems, setCurrentItems] = useState<string[]>([]);
+  const [activeLists, setActiveLists] = useState<ListItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const { theme } = useTheme();
+  const [expandedListId, setExpandedListId] = useState<number | null>(null);
+  const { setRefreshHistory } = useList();
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const toggleList = (id: string) => {
-    setActiveLists(activeLists.map(list => 
-      list.id === id ? { ...list, isExpanded: !list.isExpanded } : list
-    ));
+  const fetchActiveLists = async (pageNumber = 0, isLoadMore = false) => {
+    try {
+      setLoading(!isLoadMore);
+      setIsLoadingMore(isLoadMore);
+      const response = await getActiveLists(pageNumber);
+
+      const reversedContent = [...response.content].reverse();
+
+      if (isLoadMore) {
+        setActiveLists(prev => [...prev, ...reversedContent]);
+      } else {
+        setActiveLists(reversedContent);
+      }
+
+      setHasMore(pageNumber < response.totalPages - 1);
+      setPage(pageNumber);
+    } catch (error) {
+      console.error('Listeler yüklenirken hata:', error);
+      Alert.alert('Hata', 'Listeler yüklenirken bir hata oluştu');
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
   };
+
+  const loadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchActiveLists(page + 1, true);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveLists();
+  }, []);
 
   const addItemToList = () => {
     if (newItem.trim()) {
@@ -34,25 +79,65 @@ export default function HomeScreen() {
     }
   };
 
-  const createNewList = () => {
+  const createNewList = async () => {
     if (currentItems.length > 0 && listName.trim()) {
-      const newList: ListItem = {
-        id: `new-${Date.now()}`,
-        name: listName.trim(),
-        items: currentItems,
-        isExpanded: false,
-        createdAt: new Date(),
+      const requestBody = {
+        name: listName.trim().toUpperCase(),
+        items: currentItems.map(item => ({
+          name: item.trim().toUpperCase()
+        }))
       };
-      setActiveLists([...activeLists, newList]);
-      setCurrentItems([]);
-      setListName('');
-      setModalVisible(false);
+
+      try {
+        console.log("Gönderilen veri:", JSON.stringify(requestBody, null, 2));
+        const response = await create(requestBody);
+        console.log("Sunucu yanıtı:", response.data);
+        console.log("Sunucu yanıtı:", response.status);
+
+        if (response.status === 200) {
+          Alert.alert('Başarılı', 'Liste oluşturuldu');
+          setCurrentItems([]);
+          setListName('');
+          setModalVisible(false);
+          fetchActiveLists();
+        }
+      } catch (error: any) {
+        console.error('API Hatası:', error);
+        
+        // Validation hatalarını kontrol et
+        if (error.response?.data?.validationErrors) {
+          const errors = error.response.data.validationErrors;
+          const errorMessages = Object.entries(errors)
+            .map(([field, message]) => `${field}: ${message}`)
+            .join('\n');
+          
+          Alert.alert('Doğrulama Hatası', errorMessages);
+        } else if (error.response?.data?.message) {
+          // Genel hata mesajı
+          Alert.alert('Hata', error.response.data.message);
+        } else {
+          // Diğer hatalar
+          Alert.alert('Hata', 'Sunucuya bağlanırken bir hata oluştu');
+        }
+      }
+    }
+  };
+
+  const handleCompleteList = async (id: number) => {
+    try {
+      await listCompleted(id);
+      Alert.alert('Başarılı', 'Liste tamamlandı');
+      fetchActiveLists();
+      setRefreshHistory(true); // History sayfasını yenilemek için
+    } catch (error) {
+      console.error('Liste tamamlanırken hata:', error);
+      Alert.alert('Hata', 'Liste tamamlanırken bir hata oluştu');
     }
   };
 
   return (
     <View style={[styles.container, theme === 'dark' && styles.darkContainer]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.createButton, theme === 'dark' && styles.darkCreateButton]}
         onPress={() => setModalVisible(true)}
       >
@@ -62,58 +147,88 @@ export default function HomeScreen() {
         </Text>
       </TouchableOpacity>
 
-      <ScrollView style={styles.listsContainer}>
-        {activeLists.length > 0 ? (
-          activeLists.map((list) => (
-            <View key={list.id} style={[styles.listCard, theme === 'dark' && styles.darkListCard]}>
-              <TouchableOpacity 
+      {loading ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, theme === 'dark' && styles.darkText]}>
+            Yükleniyor...
+          </Text>
+        </View>
+      ) : activeLists.length > 0 ? (
+        <ScrollView style={styles.listsContainer}>
+          {activeLists.map((list) => (
+            <View
+              key={list.id}
+              style={[styles.listCard, theme === 'dark' && styles.darkListCard]}
+            >
+              <TouchableOpacity
                 style={[
                   styles.listHeader,
-                  list.isExpanded && styles.listHeaderExpanded,
                   theme === 'dark' && styles.darkListHeader,
-                  list.isExpanded && theme === 'dark' && styles.darkListHeaderExpanded
+                  expandedListId === list.id && styles.listHeaderExpanded,
+                  expandedListId === list.id && theme === 'dark' && styles.darkListHeaderExpanded
                 ]}
-                onPress={() => toggleList(list.id)}
+                onPress={() => setExpandedListId(expandedListId === list.id ? null : list.id)}
               >
-                <Text style={[styles.listTitle, theme === 'dark' && styles.darkText]}>
-                  {list.name}
-                </Text>
+                <View>
+                  <Text style={[styles.listTitle, theme === 'dark' && styles.darkListTitle]}>
+                    {list.name}
+                  </Text>
+                  <Text style={[styles.listDate, theme === 'dark' && styles.darkListDate]}>
+                    {new Date(list.createdDate).toLocaleDateString('tr-TR')}
+                  </Text>
+                </View>
                 <View style={styles.headerButtons}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.completeButton}
-                    onPress={() => completeList(list.id)}
+                    onPress={() => handleCompleteList(list.id)}
                   >
-                    <Ionicons name="checkmark-circle" size={24} color={theme === 'dark' ? '#6FCF97' : '#4CAF50'} />
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={24}
+                      color={theme === 'dark' ? '#6FCF97' : '#4CAF50'}
+                    />
                   </TouchableOpacity>
-                  <Ionicons 
-                    name={list.isExpanded ? "chevron-up" : "chevron-down"} 
-                    size={24} 
-                    color={theme === 'dark' ? '#fff' : '#007AFF'} 
+                  <Ionicons
+                    name={expandedListId === list.id ? "chevron-up" : "chevron-down"}
+                    size={24}
+                    color={theme === 'dark' ? '#fff' : '#007AFF'}
                   />
                 </View>
               </TouchableOpacity>
-              
-              {list.isExpanded && (
+
+              {expandedListId === list.id && (
                 <View style={[styles.listContent, theme === 'dark' && styles.darkListContent]}>
-                  {list.items.map((item, index) => (
-                    <View key={`${list.id}-${index}`} style={styles.listItem}>
-                      <Text style={[styles.listItemText, theme === 'dark' && styles.darkText]}>
-                        - {item}
+                  {list.items.map((item) => (
+                    <View key={item.id} style={styles.listItem}>
+                      <Text style={[styles.listItemText, theme === 'dark' && styles.darkListItemText]}>
+                        - {item.name}
                       </Text>
                     </View>
                   ))}
                 </View>
               )}
             </View>
-          ))
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, theme === 'dark' && styles.darkText]}>
-              Aktif Liste Bulunmamaktadır.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          ))}
+
+          {hasMore && (
+            <TouchableOpacity
+              style={[styles.loadMoreButton, theme === 'dark' && styles.darkLoadMoreButton]}
+              onPress={() => loadMore()}
+              disabled={isLoadingMore}
+            >
+              <Text style={[styles.loadMoreText, theme === 'dark' && styles.darkText]}>
+                {isLoadingMore ? 'Yükleniyor...' : 'Daha Fazla Göster'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, theme === 'dark' && styles.darkText]}>
+            Aktif Liste Bulunmamaktadır.
+          </Text>
+        </View>
+      )}
 
       <Modal
         animationType="slide"
@@ -126,7 +241,7 @@ export default function HomeScreen() {
             <Text style={[styles.modalTitle, theme === 'dark' && styles.darkText]}>
               Yeni Liste Oluştur
             </Text>
-            
+
             <View style={styles.inputContainer}>
               <TextInput
                 style={[
@@ -154,7 +269,7 @@ export default function HomeScreen() {
                 onSubmitEditing={addItemToList}
                 placeholderTextColor={theme === 'dark' ? '#666' : '#999'}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.addButton, theme === 'dark' && styles.darkAddButton]}
                 onPress={addItemToList}
               >
@@ -162,7 +277,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.currentItemsList}>
+            <View style={styles.currentItemsList}>
               {currentItems.map((item, index) => (
                 <View key={`new-${index}`} style={[
                   styles.currentItem,
@@ -178,10 +293,10 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-            </ScrollView>
+            </View>
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.modalButton,
                   styles.cancelButton,
@@ -198,13 +313,14 @@ export default function HomeScreen() {
                   İptal
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.modalButton, 
+                  styles.modalButton,
                   styles.saveButton,
                   theme === 'dark' && styles.darkSaveButton,
-                  (!listName.trim() || currentItems.length === 0) && 
-                    (theme === 'dark' ? styles.darkSaveButtonDisabled : styles.saveButtonDisabled)
+                  (!listName.trim() || currentItems.length === 0) && {
+                    backgroundColor: theme === 'dark' ? '#333' : '#ccc'
+                  }
                 ]}
                 onPress={createNewList}
                 disabled={!listName.trim() || currentItems.length === 0}
@@ -247,49 +363,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#007AFF',
     marginLeft: 8,
-  },
-  listsContainer: {
-    flex: 1,
-  },
-  listCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  listHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
-  },
-  listHeaderExpanded: {
-    borderBottomColor: '#e0e0e0',
-  },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  listContent: {
-    padding: 16,
-  },
-  listItem: {
-    paddingVertical: 4,
-  },
-  listItemText: {
-    fontSize: 16,
-    color: '#333',
   },
   emptyContainer: {
     flex: 1,
@@ -384,17 +457,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  completeButton: {
-    padding: 4,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
   darkContainer: {
     backgroundColor: '#1a1a1a',
   },
@@ -403,18 +465,6 @@ const styles = StyleSheet.create({
   },
   darkText: {
     color: '#fff',
-  },
-  darkListCard: {
-    backgroundColor: '#2a2a2a',
-  },
-  darkListHeader: {
-    borderBottomColor: '#333',
-  },
-  darkListHeaderExpanded: {
-    borderBottomColor: '#333',
-  },
-  darkListContent: {
-    borderTopColor: '#333',
   },
   darkModalContent: {
     backgroundColor: '#2a2a2a',
@@ -438,5 +488,116 @@ const styles = StyleSheet.create({
   },
   darkSaveButtonDisabled: {
     backgroundColor: '#333',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  listsContainer: {
+    paddingBottom: 100,
+  },
+  listCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  listDate: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  listContent: {
+    padding: 16,
+  },
+  listItem: {
+    paddingVertical: 4,
+  },
+  listItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  darkListCard: {
+    backgroundColor: '#2a2a2a',
+    shadowColor: '#000',
+  },
+  darkListHeader: {
+    borderBottomColor: '#333',
+  },
+  darkListContent: {
+    backgroundColor: '#2a2a2a',
+  },
+  darkListTitle: {
+    color: '#fff',
+  },
+  darkListDate: {
+    color: '#999',
+  },
+  darkListItemText: {
+    color: '#fff',
+  },
+  listHeaderExpanded: {
+    borderBottomColor: '#e0e0e0',
+  },
+  darkListHeaderExpanded: {
+    borderBottomColor: '#333',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  completeButton: {
+    padding: 4,
+  },
+  loadingMore: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  loadMoreButton: {
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  darkLoadMoreButton: {
+    backgroundColor: '#2a2a2a',
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 }); 

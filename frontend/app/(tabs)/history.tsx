@@ -1,58 +1,151 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { useState, useEffect } from 'react';
+import { completedLists } from '../api/api';
+import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useList } from '../context/ListContext';
-import { useState } from 'react';
-import { useTheme } from '../context/ThemeContext';
+
+interface ListItem {
+  id: number;
+  name: string;
+  items: {
+    id: number;
+    name: string;
+  }[];
+  createdDate: string;
+  enabled: boolean;
+}
+
+interface PageResponse {
+  content: ListItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
 
 export default function HistoryScreen() {
-  const { completedLists } = useList();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { theme } = useTheme();
+  const { refreshHistory, setRefreshHistory } = useList();
+  const [completedItems, setCompletedItems] = useState<ListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [expandedListId, setExpandedListId] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const fetchCompletedLists = async (pageNumber = 0, isLoadMore = false) => {
+    try {
+      setLoading(!isLoadMore);
+      setIsLoadingMore(isLoadMore);
+      const response = await completedLists(pageNumber);
+      
+      if (isLoadMore) {
+        setCompletedItems(prev => [...prev, ...response.content]);
+      } else {
+        setCompletedItems(response.content);
+      }
+      
+      setHasMore(pageNumber < response.totalPages - 1);
+      setPage(pageNumber);
+    } catch (error) {
+      console.error('Geçmiş listeler yüklenirken hata:', error);
+      Alert.alert('Hata', 'Geçmiş listeler yüklenirken bir hata oluştu');
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchCompletedLists(page + 1, true);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompletedLists();
+  }, []);
+
+  useEffect(() => {
+    if (refreshHistory) {
+      fetchCompletedLists();
+      setRefreshHistory(false);
+    }
+  }, [refreshHistory, setRefreshHistory]);
 
   return (
     <View style={[styles.container, theme === 'dark' && styles.darkContainer]}>
-      <ScrollView style={styles.listsContainer}>
-        {completedLists.length > 0 ? (
-          completedLists.map((list) => (
-            <View key={`completed-list-${list.id}`} 
+      {loading ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, theme === 'dark' && styles.darkText]}>
+            Yükleniyor...
+          </Text>
+        </View>
+      ) : completedItems.length > 0 ? (
+        <ScrollView style={styles.listsContainer}>
+          {completedItems.map((list) => (
+            <View
+              key={list.id}
               style={[styles.listCard, theme === 'dark' && styles.darkListCard]}
             >
-              <TouchableOpacity 
-                style={[styles.listHeader, expandedId === list.id && styles.listHeaderExpanded]}
-                onPress={() => setExpandedId(expandedId === list.id ? null : list.id)}
+              <TouchableOpacity
+                style={[
+                  styles.listHeader,
+                  theme === 'dark' && styles.darkListHeader,
+                  expandedListId === list.id && styles.listHeaderExpanded,
+                  expandedListId === list.id && theme === 'dark' && styles.darkListHeaderExpanded
+                ]}
+                onPress={() => setExpandedListId(expandedListId === list.id ? null : list.id)}
               >
                 <View>
-                  <Text style={[styles.listTitle, theme === 'dark' && styles.darkText]}>{list.name}</Text>
-                  <Text style={[styles.completedDate, theme === 'dark' && styles.darkText]}>
-                    {new Date(list.completedAt!).toLocaleDateString('tr-TR')}
+                  <Text style={[styles.listTitle, theme === 'dark' && styles.darkListTitle]}>
+                    {list.name}
+                  </Text>
+                  <Text style={[styles.listDate, theme === 'dark' && styles.darkListDate]}>
+                    {new Date(list.createdDate).toLocaleDateString('tr-TR')}
                   </Text>
                 </View>
                 <Ionicons 
-                  name={expandedId === list.id ? "chevron-up" : "chevron-down"} 
+                  name={expandedListId === list.id ? "chevron-up" : "chevron-down"} 
                   size={24} 
-                  color="#007AFF" 
+                  color={theme === 'dark' ? '#fff' : '#007AFF'} 
                 />
               </TouchableOpacity>
               
-              {expandedId === list.id && (
-                <View style={styles.listContent}>
-                  {list.items.map((item, index) => (
-                    <View key={`completed-item-${list.id}-${index}`} style={styles.listItem}>
-                      <Text style={[styles.listItemText, theme === 'dark' && styles.darkText]}>- {item}</Text>
+              {expandedListId === list.id && (
+                <View style={[styles.listContent, theme === 'dark' && styles.darkListContent]}>
+                  {list.items.map((item) => (
+                    <View key={item.id} style={styles.listItem}>
+                      <Text style={[styles.listItemText, theme === 'dark' && styles.darkListItemText]}>
+                        - {item.name}
+                      </Text>
                     </View>
                   ))}
                 </View>
               )}
             </View>
-          ))
-        ) : (
-          <View style={[styles.emptyContainer, theme === 'dark' && styles.darkText]}>
-            <Text style={[styles.emptyText, theme === 'dark' && styles.darkText]}>
-              Geçmiş Liste Bulunmamaktadır.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          ))}
+          
+          {hasMore && (
+            <TouchableOpacity
+              style={[styles.loadMoreButton, theme === 'dark' && styles.darkLoadMoreButton]}
+              onPress={() => loadMore()}
+              disabled={isLoadingMore}
+            >
+              <Text style={[styles.loadMoreText, theme === 'dark' && styles.darkText]}>
+                {isLoadingMore ? 'Yükleniyor...' : 'Daha Fazla Göster'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, theme === 'dark' && styles.darkText]}>
+            Geçmiş Liste Bulunmamaktadır.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -65,11 +158,12 @@ const styles = StyleSheet.create({
   },
   listsContainer: {
     flex: 1,
+    paddingBottom: 100,
   },
   listCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -78,7 +172,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
-    overflow: 'hidden',
   },
   listHeader: {
     flexDirection: 'row',
@@ -94,8 +187,9 @@ const styles = StyleSheet.create({
   listTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
   },
-  completedDate: {
+  listDate: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
@@ -127,7 +221,48 @@ const styles = StyleSheet.create({
   darkListCard: {
     backgroundColor: '#2a2a2a',
   },
+  darkListHeader: {
+    borderBottomColor: '#333',
+  },
+  darkListContent: {
+    backgroundColor: '#2a2a2a',
+  },
+  darkListTitle: {
+    color: '#fff',
+  },
+  darkListDate: {
+    color: '#999',
+  },
+  darkListItemText: {
+    color: '#fff',
+  },
   darkText: {
     color: '#fff',
+  },
+  darkListHeaderExpanded: {
+    borderBottomColor: '#333',
+  },
+  loadMoreButton: {
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  darkLoadMoreButton: {
+    backgroundColor: '#2a2a2a',
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 }); 

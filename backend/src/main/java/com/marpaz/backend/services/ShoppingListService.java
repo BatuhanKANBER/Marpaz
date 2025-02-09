@@ -44,6 +44,11 @@ public class ShoppingListService {
     }
 
     @Transactional
+    public Page<ShoppingList> getAllHistoryList(Pageable page) {
+        return shoppingListRepository.findByEnabledFalse(page);
+    }
+
+    @Transactional
     public ShoppingList getList(Long id) {
         return shoppingListRepository.findById(id).orElseThrow(() -> new RuntimeException(id + " not found"));
     }
@@ -52,19 +57,12 @@ public class ShoppingListService {
     public void update(Long id, ShoppingListUpdateDTO shoppingListUpdateDTO) {
         try {
             ShoppingList inDbShoppingList = getList(id);
-            inDbShoppingList.setName(shoppingListUpdateDTO.name());
             inDbShoppingList.setEnabled(shoppingListUpdateDTO.enabled());
             shoppingListRepository.save(inDbShoppingList);
         } catch (ValidationException exception) {
             throw new ValidationException();
         }
 
-    }
-
-    @Transactional
-    public void remove(Long id) {
-        ShoppingList inDbShoppingList = getList(id);
-        shoppingListRepository.delete(inDbShoppingList);
     }
 
 }
