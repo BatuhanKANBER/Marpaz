@@ -16,13 +16,6 @@ interface ListItem {
   enabled: boolean;
 }
 
-interface PageResponse {
-  content: ListItem[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-}
-
 export default function HomeScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [newItem, setNewItem] = useState('');
@@ -54,7 +47,6 @@ export default function HomeScreen() {
       setHasMore(pageNumber < response.totalPages - 1);
       setPage(pageNumber);
     } catch (error) {
-      console.error('Listeler yüklenirken hata:', error);
       Alert.alert('Hata', 'Listeler yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
@@ -89,10 +81,7 @@ export default function HomeScreen() {
       };
 
       try {
-        console.log("Gönderilen veri:", JSON.stringify(requestBody, null, 2));
         const response = await create(requestBody);
-        console.log("Sunucu yanıtı:", response.data);
-        console.log("Sunucu yanıtı:", response.status);
 
         if (response.status === 200) {
           Alert.alert('Başarılı', 'Liste oluşturuldu');
@@ -101,10 +90,7 @@ export default function HomeScreen() {
           setModalVisible(false);
           fetchActiveLists();
         }
-      } catch (error: any) {
-        console.error('API Hatası:', error);
-        
-        // Validation hatalarını kontrol et
+      } catch (error: any) {        
         if (error.response?.data?.validationErrors) {
           const errors = error.response.data.validationErrors;
           const errorMessages = Object.entries(errors)
@@ -113,10 +99,8 @@ export default function HomeScreen() {
           
           Alert.alert('Doğrulama Hatası', errorMessages);
         } else if (error.response?.data?.message) {
-          // Genel hata mesajı
           Alert.alert('Hata', error.response.data.message);
         } else {
-          // Diğer hatalar
           Alert.alert('Hata', 'Sunucuya bağlanırken bir hata oluştu');
         }
       }
@@ -128,9 +112,8 @@ export default function HomeScreen() {
       await listCompleted(id);
       Alert.alert('Başarılı', 'Liste tamamlandı');
       fetchActiveLists();
-      setRefreshHistory(true); // History sayfasını yenilemek için
+      setRefreshHistory(true); 
     } catch (error) {
-      console.error('Liste tamamlanırken hata:', error);
       Alert.alert('Hata', 'Liste tamamlanırken bir hata oluştu');
     }
   };

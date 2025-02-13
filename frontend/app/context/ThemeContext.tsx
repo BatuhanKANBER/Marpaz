@@ -13,7 +13,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light');
 
-  // Uygulama başladığında kaydedilmiş temayı yükle
   useEffect(() => {
     loadTheme();
   }, []);
@@ -25,7 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setTheme(savedTheme as Theme);
       }
     } catch (error) {
-      console.log('Tema yüklenirken hata oluştu:', error);
+      throw error
     }
   };
 
@@ -35,7 +34,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem('theme', newTheme);
     } catch (error) {
-      console.log('Tema kaydedilirken hata oluştu:', error);
+      throw error
     }
   };
 

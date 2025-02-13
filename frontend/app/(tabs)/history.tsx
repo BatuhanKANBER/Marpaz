@@ -17,13 +17,6 @@ interface ListItem {
   enabled: boolean;
 }
 
-interface PageResponse {
-  content: ListItem[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-}
-
 export default function HistoryScreen() {
   const { theme } = useTheme();
   const { refreshHistory, setRefreshHistory } = useList();
@@ -49,7 +42,6 @@ export default function HistoryScreen() {
       setHasMore(pageNumber < response.totalPages - 1);
       setPage(pageNumber);
     } catch (error) {
-      console.error('Geçmiş listeler yüklenirken hata:', error);
       Alert.alert('Hata', 'Geçmiş listeler yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);

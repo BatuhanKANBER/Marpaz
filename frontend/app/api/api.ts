@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:8080'; // Android Emulator için özel localhost adresi
-
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 interface ListItem {
   name: string;
 }
@@ -21,7 +20,6 @@ export const create = async (data: CreateListRequest) => {
     return response;
   } catch (error: any) {
     if (error.response) {
-      // Sunucudan gelen hata detaylarını logla
       console.error('Sunucu yanıtı:', error.response.data);
       console.error('Durum kodu:', error.response.status);
     }
@@ -32,7 +30,7 @@ export const create = async (data: CreateListRequest) => {
 export const listCompleted = async (id: number) => {
   try {
     const requestBody = {
-      enabled: false  // Backend'e listenin tamamlandığını belirtmek için
+      enabled: false
     };
 
     const response = await axios.put(
@@ -58,8 +56,8 @@ export const getActiveLists = async (page = 0) => {
 
 export const completedLists = async (page = 0) => {
   try {
-    const response = await axios.get(`${API_URL}/api/v1/shlists/history-list`, { 
-      params: { page, size: 5 } 
+    const response = await axios.get(`${API_URL}/api/v1/shlists/history-list`, {
+      params: { page, size: 5 }
     });
     return response.data;
   } catch (error) {
