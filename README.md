@@ -30,7 +30,7 @@ Marpaz is a mobile application that makes it easy to create shopping lists for m
 2. Secure your AWS server (After the build process, your device will not connect to insecure IPs):
    - AWS security guide:
      ```bash
-     [https://www.youtube.com/watch?v=wvvm5pQOMsM&t=819s](https://www.youtube.com/watch?v=JQP96EjRM98&t=678s)
+     https://www.youtube.com/watch?v=JQP96EjRM98&t=678s
      ```
 
 ### Frontend
