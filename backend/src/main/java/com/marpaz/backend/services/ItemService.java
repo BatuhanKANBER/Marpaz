@@ -24,4 +24,14 @@ public class ItemService {
             itemRepository.save(item);
         }
     }
+
+    @Transactional
+    public void delete(List<Item> items) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("Items list cannot be null or empty");
+        }
+        for (Item item : items) {
+            itemRepository.deleteById(item.getId());
+        }
+    }
 }

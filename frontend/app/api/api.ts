@@ -33,8 +33,8 @@ export const listCompleted = async (id: number) => {
       enabled: false
     };
 
-    const response = await axios.put(
-      `${API_URL}/api/v1/shlists/${id}/update`,
+    const response = await axios.patch(
+      `${API_URL}/api/v1/shlists/${id}/completed`,
       requestBody
     );
     return response.data;
@@ -60,6 +60,29 @@ export const completedLists = async (page = 0) => {
       params: { page, size: 5 }
     });
     return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+export const deleteList = async (id: number) => {
+  try {
+    const response = await axios.delete(`${API_URL}/api/v1/shlists/${id}/delete`);
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+export const updateList = async (id: number, data: CreateListRequest) => {
+  try {
+    const response = await axios.put(
+      `${API_URL}/api/v1/shlists/${id}/update`,
+      data
+    );
+    return response;
   } catch (error) {
     console.error('API Error:', error);
     throw error;

@@ -7,7 +7,7 @@ import com.marpaz.backend.model.ShoppingList;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record ShoppingListCreateDTO(
+public record ShoppingListCreateAndUpdateDTO(
         @NotBlank(message = "Name cannot be blank") @Size(min = 6, max = 30) String name,
         List<Item> items) {
 

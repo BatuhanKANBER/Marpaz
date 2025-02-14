@@ -7,7 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.marpaz.backend.dto.ShoppingListUpdateDTO;
+import com.marpaz.backend.dto.ShoppingListCompletedDTO;
+import com.marpaz.backend.dto.ShoppingListCreateAndUpdateDTO;
 import com.marpaz.backend.model.ShoppingList;
 import com.marpaz.backend.repositories.ShoppingListRepository;
 
@@ -54,15 +55,35 @@ public class ShoppingListService {
     }
 
     @Transactional
-    public void update(Long id, ShoppingListUpdateDTO shoppingListUpdateDTO) {
+    public void completed(Long id, ShoppingListCompletedDTO shoppingListUpdateDTO) {
         try {
             ShoppingList inDbShoppingList = getList(id);
             inDbShoppingList.setEnabled(shoppingListUpdateDTO.enabled());
-            shoppingListRepository.save(inDbShoppingList);
+            shoppingListRepository.saveAndFlush(inDbShoppingList);
         } catch (ValidationException exception) {
             throw new ValidationException();
         }
 
+    }
+
+    @Transactional
+    public void update(Long id, ShoppingListCreateAndUpdateDTO shoppingList) {
+        ShoppingList inDbShoppingList = getList(id);
+        try {
+            itemService.delete(inDbShoppingList.getItems());
+
+            inDbShoppingList.setName(shoppingList.name());
+            inDbShoppingList.setItems(shoppingList.items());
+            shoppingListRepository.saveAndFlush(inDbShoppingList);
+            itemService.save(shoppingList.items());
+        } catch (ValidationException exception) {
+            throw new ValidationException();
+        }
+    }
+
+    public void delete(Long id) {
+        ShoppingList inDbShoppingList = getList(id);
+        shoppingListRepository.delete(inDbShoppingList);
     }
 
 }

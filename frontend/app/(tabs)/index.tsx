@@ -2,7 +2,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Modal, TextInput, Alert, Scro
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { create, getActiveLists, listCompleted } from '../api/api';
+import { create, getActiveLists, listCompleted, updateList } from '../api/api';
 import { useList } from '../context/ListContext';
 
 interface ListItem {
@@ -29,6 +29,8 @@ export default function HomeScreen() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingList, setEditingList] = useState<ListItem | null>(null);
 
   const fetchActiveLists = async (pageNumber = 0, isLoadMore = false) => {
     try {
@@ -118,6 +120,48 @@ export default function HomeScreen() {
     }
   };
 
+  const handleUpdateList = async () => {
+    if (currentItems.length > 0 && listName.trim() && editingList) {
+      const requestBody = {
+        name: listName.trim().toUpperCase(),
+        items: currentItems.map(item => ({
+          name: item.trim().toUpperCase()
+        }))
+      };
+
+      try {
+        const response = await updateList(editingList.id, requestBody);
+        if (response.status === 200) {
+          Alert.alert('Başarılı', 'Liste güncellendi');
+          setCurrentItems([]);
+          setListName('');
+          setModalVisible(false);
+          setIsEditMode(false);
+          setEditingList(null);
+          fetchActiveLists();
+        }
+      } catch (error: any) {
+        if (error.response?.data?.validationErrors) {
+          const errors = error.response.data.validationErrors;
+          const errorMessages = Object.entries(errors)
+            .map(([field, message]) => `${field}: ${message}`)
+            .join('\n');
+          Alert.alert('Doğrulama Hatası', errorMessages);
+        } else {
+          Alert.alert('Hata', 'Liste güncellenirken bir hata oluştu');
+        }
+      }
+    }
+  };
+
+  const handleEditList = (list: ListItem) => {
+    setIsEditMode(true);
+    setEditingList(list);
+    setListName(list.name);
+    setCurrentItems(list.items.map(item => item.name));
+    setModalVisible(true);
+  };
+
   return (
     <View style={[styles.container, theme === 'dark' && styles.darkContainer]}>
       <TouchableOpacity
@@ -162,7 +206,17 @@ export default function HomeScreen() {
                 </View>
                 <View style={styles.headerButtons}>
                   <TouchableOpacity
-                    style={styles.completeButton}
+                    style={styles.actionButton}
+                    onPress={() => handleEditList(list)}
+                  >
+                    <Ionicons
+                      name="pencil-outline"
+                      size={24}
+                      color={theme === 'dark' ? '#fff' : '#007AFF'}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
                     onPress={() => handleCompleteList(list.id)}
                   >
                     <Ionicons
@@ -222,7 +276,7 @@ export default function HomeScreen() {
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, theme === 'dark' && styles.darkModalContent]}>
             <Text style={[styles.modalTitle, theme === 'dark' && styles.darkText]}>
-              Yeni Liste Oluştur
+              {isEditMode ? 'Listeyi Güncelle' : 'Yeni Liste Oluştur'}
             </Text>
 
             <View style={styles.inputContainer}>
@@ -290,6 +344,8 @@ export default function HomeScreen() {
                   setCurrentItems([]);
                   setNewItem('');
                   setListName('');
+                  setIsEditMode(false);
+                  setEditingList(null);
                 }}
               >
                 <Text style={[styles.cancelButtonText, theme === 'dark' && styles.darkText]}>
@@ -305,10 +361,12 @@ export default function HomeScreen() {
                     backgroundColor: theme === 'dark' ? '#333' : '#ccc'
                   }
                 ]}
-                onPress={createNewList}
+                onPress={isEditMode ? handleUpdateList : createNewList}
                 disabled={!listName.trim() || currentItems.length === 0}
               >
-                <Text style={styles.saveButtonText}>Kaydet</Text>
+                <Text style={styles.saveButtonText}>
+                  {isEditMode ? 'Güncelle' : 'Kaydet'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -549,7 +607,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  completeButton: {
+  actionButton: {
     padding: 4,
   },
   loadingMore: {

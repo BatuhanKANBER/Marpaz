@@ -1,7 +1,7 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useState, useEffect } from 'react';
-import { completedLists } from '../api/api';
+import { completedLists, deleteList } from '../api/api';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useList } from '../context/ListContext';
@@ -55,6 +55,33 @@ export default function HistoryScreen() {
     }
   };
 
+  const handleDeleteList = async (id: number) => {
+    try {
+      Alert.alert(
+        'Listeyi Sil',
+        'Bu listeyi silmek istediğinizden emin misiniz?',
+        [
+          {
+            text: 'İptal',
+            style: 'cancel'
+          },
+          {
+            text: 'Sil',
+            style: 'destructive',
+            onPress: async () => {
+              await deleteList(id);
+              Alert.alert('Başarılı', 'Liste silindi');
+              fetchCompletedLists(); // Listeyi yenilemek için
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Liste silinirken hata:', error);
+      Alert.alert('Hata', 'Liste silinirken bir hata oluştu');
+    }
+  };
+
   useEffect(() => {
     fetchCompletedLists();
   }, []);
@@ -98,11 +125,23 @@ export default function HistoryScreen() {
                     {new Date(list.createdDate).toLocaleDateString('tr-TR')}
                   </Text>
                 </View>
-                <Ionicons 
-                  name={expandedListId === list.id ? "chevron-up" : "chevron-down"} 
-                  size={24} 
-                  color={theme === 'dark' ? '#fff' : '#007AFF'} 
-                />
+                <View style={styles.headerButtons}>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteList(list.id)}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={24}
+                      color={theme === 'dark' ? '#ff6b6b' : '#dc3545'}
+                    />
+                  </TouchableOpacity>
+                  <Ionicons 
+                    name={expandedListId === list.id ? "chevron-up" : "chevron-down"} 
+                    size={24} 
+                    color={theme === 'dark' ? '#fff' : '#007AFF'} 
+                  />
+                </View>
               </TouchableOpacity>
               
               {expandedListId === list.id && (
@@ -256,5 +295,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '600',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteButton: {
+    padding: 4,
   },
 }); 

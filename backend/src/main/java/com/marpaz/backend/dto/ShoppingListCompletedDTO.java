@@ -2,7 +2,7 @@ package com.marpaz.backend.dto;
 
 import com.marpaz.backend.model.ShoppingList;
 
-public record ShoppingListUpdateDTO(
+public record ShoppingListCompletedDTO(
         boolean enabled) {
     public ShoppingList toShoppingList() {
         ShoppingList shoppingList = new ShoppingList();
