@@ -81,6 +81,7 @@ public class ShoppingListService {
         }
     }
 
+    @Transactional
     public void delete(Long id) {
         ShoppingList inDbShoppingList = getList(id);
         shoppingListRepository.delete(inDbShoppingList);
