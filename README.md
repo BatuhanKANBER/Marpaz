@@ -23,15 +23,9 @@ Marpaz is a mobile application that makes it easy to create shopping lists for m
 
 ### Backend
 1. Deploy the backend project on a free AWS server.
-   - AWS deployment guide:
-     ```bash
-        https://www.youtube.com/watch?v=ua0cb2LjCW4
-     ```
+   - AWS deployment guide: https://www.youtube.com/watch?v=ua0cb2LjCW4
 2. Secure your AWS server (After the build process, your device will not connect to insecure IPs):
-   - AWS security guide:
-     ```bash
-         https://www.youtube.com/watch?v=JQP96EjRM98&t=678s
-     ```
+   - AWS security guide: https://www.youtube.com/watch?v=JQP96EjRM98&t=678s
 
 ### Frontend
 1. Enter the domain you secured in the `.env` file.
