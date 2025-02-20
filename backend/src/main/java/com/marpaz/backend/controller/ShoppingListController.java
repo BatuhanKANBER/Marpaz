@@ -31,23 +31,23 @@ public class ShoppingListController {
 
     @PostMapping("/create")
     GenericMessage save(@Valid @RequestBody ShoppingListCreateAndUpdateDTO shoppingList) {
+        if (shoppingList.clientId() == null || shoppingList.clientId().isEmpty()) {
+            throw new RuntimeException("Client ID gereklidir!");
+        }
         shoppingListService.save(shoppingList.toShoppingList());
         return new GenericMessage("List is created.");
     }
 
-    @GetMapping("/list")
-    Page<ShoppingListDTO> getAllList(@PageableDefault(sort = "id", direction = Direction.DESC) Pageable page) {
-        return shoppingListService.getAllList(page).map(ShoppingListDTO::new);
+    @GetMapping("/active-list/{clientId}")
+    Page<ShoppingListDTO> getAllActiveList(@PathVariable String clientId,
+            @PageableDefault(sort = "id", direction = Direction.DESC) Pageable page) {
+        return shoppingListService.getAllActiveList(clientId, page).map(ShoppingListDTO::new);
     }
 
-    @GetMapping("/active-list")
-    Page<ShoppingListDTO> getAllActiveList(@PageableDefault(sort = "id", direction = Direction.DESC) Pageable page) {
-        return shoppingListService.getAllActiveList(page).map(ShoppingListDTO::new);
-    }
-
-    @GetMapping("/history-list")
-    Page<ShoppingListDTO> getAllHistoryList(@PageableDefault(sort = "id", direction = Direction.DESC) Pageable page) {
-        return shoppingListService.getAllHistoryList(page).map(ShoppingListDTO::new);
+    @GetMapping("/history-list/{clientId}")
+    Page<ShoppingListDTO> getAllHistoryList(@PathVariable String clientId,
+            @PageableDefault(sort = "id", direction = Direction.DESC) Pageable page) {
+        return shoppingListService.getAllHistoryList(clientId, page).map(ShoppingListDTO::new);
     }
 
     @PatchMapping("/{id}/completed")

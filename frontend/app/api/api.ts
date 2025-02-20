@@ -8,6 +8,7 @@ interface ListItem {
 interface CreateListRequest {
   name: string;
   items: ListItem[];
+  clientId: string | null;
 }
 
 export const create = async (data: CreateListRequest) => {
@@ -44,9 +45,14 @@ export const listCompleted = async (id: number) => {
   }
 };
 
-export const getActiveLists = async (page = 0) => {
+export const getActiveLists = async (clientId: string, page = 0) => {
   try {
-    const response = await axios.get(`${API_URL}/api/v1/shlists/active-list`, { params: { page, size: 5 } });
+    const response = await axios.get(`${API_URL}/api/v1/shlists/active-list/${clientId}`, {
+      params: {
+        page,
+        size: 5
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('API Error:', error);
@@ -54,9 +60,10 @@ export const getActiveLists = async (page = 0) => {
   }
 };
 
-export const completedLists = async (page = 0) => {
+
+export const completedLists = async (clientId: string, page = 0) => {
   try {
-    const response = await axios.get(`${API_URL}/api/v1/shlists/history-list`, {
+    const response = await axios.get(`${API_URL}/api/v1/shlists/history-list/${clientId}`, {
       params: { page, size: 5 }
     });
     return response.data;

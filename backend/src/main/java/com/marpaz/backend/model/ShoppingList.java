@@ -34,4 +34,6 @@ public class ShoppingList {
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<Item> items;
+
+    private String clientId;
 }

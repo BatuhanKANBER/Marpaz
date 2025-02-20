@@ -18,6 +18,7 @@ public class ShoppingListDTO {
     private Date createdDate;
     private boolean enabled;
     private List<Item> items;
+    private String clientId;
 
     public ShoppingListDTO(ShoppingList shoppingList) {
         setId(shoppingList.getId());
@@ -27,5 +28,6 @@ public class ShoppingListDTO {
         setItems(shoppingList.getItems().stream()
                 .map(item -> new Item(item.getId(), item.getName()))
                 .collect(Collectors.toList()));
+        setClientId(shoppingList.getClientId());
     }
 }

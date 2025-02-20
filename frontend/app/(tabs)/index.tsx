@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { create, getActiveLists, listCompleted, updateList } from '../api/api';
 import { useList } from '../context/ListContext';
+import * as SecureStore from 'expo-secure-store';
+import uuid from 'react-native-uuid';
+
 
 interface ListItem {
   id: number;
@@ -14,6 +17,7 @@ interface ListItem {
   }[];
   createdDate: string;
   enabled: boolean;
+  clientId: string;
 }
 
 export default function HomeScreen() {
@@ -32,11 +36,37 @@ export default function HomeScreen() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingList, setEditingList] = useState<ListItem | null>(null);
 
+  async function getClientId() {
+    try {
+      let clientId = await SecureStore.getItemAsync('clientId');
+      if (!clientId) {
+        clientId = uuid.v4();
+        await SecureStore.setItemAsync('clientId', clientId);
+      }
+      return clientId;
+    } catch (error) {
+      console.error("Client ID alınırken hata oluştu: ", error);
+      return null;
+    }
+  }
+
   const fetchActiveLists = async (pageNumber = 0, isLoadMore = false) => {
     try {
       setLoading(!isLoadMore);
       setIsLoadingMore(isLoadMore);
-      const response = await getActiveLists(pageNumber);
+
+      const clientId = await getClientId();
+      console.log("CLIENT ID: ", clientId)
+      if (!clientId) {
+        Alert.alert("Hata", "Client ID alınamadı.");
+        return;
+      }
+
+      const response = await getActiveLists(clientId, pageNumber);
+      if (!response || !response.content) {
+        Alert.alert("Hata", "Veriler alınırken bir sorun oluştu.");
+        return;
+      }
 
       const reversedContent = [...response.content].reverse();
 
@@ -49,6 +79,7 @@ export default function HomeScreen() {
       setHasMore(pageNumber < response.totalPages - 1);
       setPage(pageNumber);
     } catch (error) {
+      console.error("Listeler yüklenirken bir hata oluştu: ", error);
       Alert.alert('Hata', 'Listeler yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
@@ -75,11 +106,13 @@ export default function HomeScreen() {
 
   const createNewList = async () => {
     if (currentItems.length > 0 && listName.trim()) {
+      const clientId = await getClientId();
       const requestBody = {
         name: listName.trim().toUpperCase(),
         items: currentItems.map(item => ({
           name: item.trim().toUpperCase()
-        }))
+        })),
+        clientId: clientId
       };
 
       try {
@@ -92,13 +125,13 @@ export default function HomeScreen() {
           setModalVisible(false);
           fetchActiveLists();
         }
-      } catch (error: any) {        
+      } catch (error: any) {
         if (error.response?.data?.validationErrors) {
           const errors = error.response.data.validationErrors;
           const errorMessages = Object.entries(errors)
             .map(([field, message]) => `${field}: ${message}`)
             .join('\n');
-          
+
           Alert.alert('Doğrulama Hatası', errorMessages);
         } else if (error.response?.data?.message) {
           Alert.alert('Hata', error.response.data.message);
@@ -114,7 +147,7 @@ export default function HomeScreen() {
       await listCompleted(id);
       Alert.alert('Başarılı', 'Liste tamamlandı');
       fetchActiveLists();
-      setRefreshHistory(true); 
+      setRefreshHistory(true);
     } catch (error) {
       Alert.alert('Hata', 'Liste tamamlanırken bir hata oluştu');
     }
@@ -122,11 +155,13 @@ export default function HomeScreen() {
 
   const handleUpdateList = async () => {
     if (currentItems.length > 0 && listName.trim() && editingList) {
+      const clientId = await getClientId();
       const requestBody = {
         name: listName.trim().toUpperCase(),
         items: currentItems.map(item => ({
           name: item.trim().toUpperCase()
-        }))
+        })),
+        clientId: clientId
       };
 
       try {

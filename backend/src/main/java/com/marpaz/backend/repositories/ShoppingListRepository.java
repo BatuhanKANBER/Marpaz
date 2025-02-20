@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.marpaz.backend.model.ShoppingList;
 
 public interface ShoppingListRepository extends JpaRepository<ShoppingList, Long> {
-    Page<ShoppingList> findByEnabledTrue(Pageable pageable);
+    Page<ShoppingList> findByEnabledTrueAndClientId(String clientId, Pageable pageable);
 
-    Page<ShoppingList> findByEnabledFalse(Pageable pageable);
+    Page<ShoppingList> findByEnabledFalseAndClientId(String clientId, Pageable pageable);
 }

@@ -5,6 +5,8 @@ import { completedLists, deleteList } from '../api/api';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useList } from '../context/ListContext';
+import * as SecureStore from 'expo-secure-store';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ListItem {
   id: number;
@@ -15,6 +17,7 @@ interface ListItem {
   }[];
   createdDate: string;
   enabled: boolean;
+  clientId: string;
 }
 
 export default function HistoryScreen() {
@@ -27,18 +30,28 @@ export default function HistoryScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  async function getClientId() {
+    let clientId = await SecureStore.getItemAsync('clientId');
+    if (!clientId) {
+      clientId = uuidv4();
+      await SecureStore.setItemAsync('clientId', clientId);
+    }
+    return clientId;
+  }
+
   const fetchCompletedLists = async (pageNumber = 0, isLoadMore = false) => {
     try {
       setLoading(!isLoadMore);
       setIsLoadingMore(isLoadMore);
-      const response = await completedLists(pageNumber);
-      
+      const clientId = await getClientId();
+      const response = await completedLists(clientId, pageNumber);
+
       if (isLoadMore) {
         setCompletedItems(prev => [...prev, ...response.content]);
       } else {
         setCompletedItems(response.content);
       }
-      
+
       setHasMore(pageNumber < response.totalPages - 1);
       setPage(pageNumber);
     } catch (error) {
@@ -71,7 +84,7 @@ export default function HistoryScreen() {
             onPress: async () => {
               await deleteList(id);
               Alert.alert('Başarılı', 'Liste silindi');
-              fetchCompletedLists(); // Listeyi yenilemek için
+              fetchCompletedLists();
             }
           }
         ]
@@ -136,14 +149,14 @@ export default function HistoryScreen() {
                       color={theme === 'dark' ? '#ff6b6b' : '#dc3545'}
                     />
                   </TouchableOpacity>
-                  <Ionicons 
-                    name={expandedListId === list.id ? "chevron-up" : "chevron-down"} 
-                    size={24} 
-                    color={theme === 'dark' ? '#fff' : '#007AFF'} 
+                  <Ionicons
+                    name={expandedListId === list.id ? "chevron-up" : "chevron-down"}
+                    size={24}
+                    color={theme === 'dark' ? '#fff' : '#007AFF'}
                   />
                 </View>
               </TouchableOpacity>
-              
+
               {expandedListId === list.id && (
                 <View style={[styles.listContent, theme === 'dark' && styles.darkListContent]}>
                   {list.items.map((item) => (
@@ -157,7 +170,7 @@ export default function HistoryScreen() {
               )}
             </View>
           ))}
-          
+
           {hasMore && (
             <TouchableOpacity
               style={[styles.loadMoreButton, theme === 'dark' && styles.darkLoadMoreButton]}

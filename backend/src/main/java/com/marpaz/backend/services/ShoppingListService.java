@@ -35,18 +35,13 @@ public class ShoppingListService {
     }
 
     @Transactional
-    public Page<ShoppingList> getAllList(Pageable page) {
-        return shoppingListRepository.findAll(page);
+    public Page<ShoppingList> getAllActiveList(String clientId, Pageable page) {
+        return shoppingListRepository.findByEnabledTrueAndClientId(clientId, page);
     }
 
     @Transactional
-    public Page<ShoppingList> getAllActiveList(Pageable page) {
-        return shoppingListRepository.findByEnabledTrue(page);
-    }
-
-    @Transactional
-    public Page<ShoppingList> getAllHistoryList(Pageable page) {
-        return shoppingListRepository.findByEnabledFalse(page);
+    public Page<ShoppingList> getAllHistoryList(String clientId, Pageable page) {
+        return shoppingListRepository.findByEnabledFalseAndClientId(clientId, page);
     }
 
     @Transactional
