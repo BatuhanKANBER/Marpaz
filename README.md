@@ -2,6 +2,9 @@
 
 Marpaz is a mobile application that makes it easy to create shopping lists for market and grocery store shopping. Users can create, edit, and manage their shopping lists.
 
+### Download for
+![Marpaz QR](https://github.com/user-attachments/assets/b918c8be-c130-42e3-8d85-170e41eabcec)
+
 ## 🚀 Technologies
 
 ### Backend
@@ -23,15 +26,9 @@ Marpaz is a mobile application that makes it easy to create shopping lists for m
 
 ### Backend
 1. Deploy the backend project on a free AWS server.
-   - AWS deployment guide:
-     ```bash
-        https://www.youtube.com/watch?v=ua0cb2LjCW4
-     ```
+   - AWS deployment guide: https://www.youtube.com/watch?v=ua0cb2LjCW4
 2. Secure your AWS server (After the build process, your device will not connect to insecure IPs):
-   - AWS security guide:
-     ```bash
-         https://www.youtube.com/watch?v=JQP96EjRM98&t=678s
-     ```
+   - AWS security guide: https://www.youtube.com/watch?v=JQP96EjRM98&t=678s
 
 ### Frontend
 1. Enter the domain you secured in the `.env` file.
