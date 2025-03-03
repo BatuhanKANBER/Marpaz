@@ -2,9 +2,6 @@
 
 Marpaz is a mobile application that makes it easy to create shopping lists for market and grocery store shopping. Users can create, edit, and manage their shopping lists.
 
-### Download for
-![Marpaz QR](https://github.com/user-attachments/assets/b918c8be-c130-42e3-8d85-170e41eabcec)
-
 ## 🚀 Technologies
 
 ### Backend
